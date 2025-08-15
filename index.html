@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="ku" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>داگرتنا ڤیدیویێن تیکتۆکی</title>
+    <style>
+        /* CSS Styles - هەمان ستایلێ بەرێ یە, چ گوهۆڕین پێدڤی نینن */
+        @import url("https://fonts.googleapis.com/css2?family=Poppins:wght@200;300;400;500;600;700&display=swap");
+        :root { --primary: 146, 50%, 36%; --primary-dark: 146, 50%, 21%; --primary-solid: hsl(var(--primary)); --warning: 0, 100%, 50%; --success: 120, 100%, 43%; --transition: .3s ease-in-out; }
+        *, *::before, *::after { box-sizing: border-box; text-decoration: none; line-height: 1.3; margin: 0; padding: 0; }
+        *:focus, *:focus-visible { outline: transparent; }
+        ::selection { color: white; background-color: hsl(var(--primary)); }
+        body, html { width: 100%; height: 100%; background-color: #f0f2f4; font-family: 'Poppins', sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 1.5rem; }
+        .off { display: none !important; } .animate { transition: all .3s ease-out; transform: translateY(-2rem); opacity: 0; } .animate:nth-child(2) { transition-delay: .1s; } .animate:nth-child(3) { transition-delay: .2s; } .animate:nth-child(4) { transition-delay: .3s; } .animate.in { transform: translateY(0); opacity: 1; }
+        main { width: 100%; max-width: 700px; display: grid; place-items: center; grid-gap: 1.5rem; }
+        main h1 { font-size: 1.75rem; text-align: center; color: #333; } main p { text-align: center; font-size: 1rem; color: #555; max-width: 500px; }
+        .input-container { width: 100%; display: grid; grid-template-columns: 1fr auto; gap: 1rem; background: white; border: .1rem solid hsl(0, 0%, 90%); border-radius: 1.5rem; padding: 0.5rem; transition: all var(--transition); }
+        .input-container:focus-within { border-color: var(--primary-solid); box-shadow: 0 0 10px hsl(var(--primary), 0.2); }
+        #tiktok-url { width: 100%; background-color: transparent; border: none; padding: 1rem; resize: none; font-size: 1rem; color: black; font-family: 'Poppins', sans-serif; direction: ltr; text-align: left; }
+        #download-btn { padding: .85rem 1.5rem; background: var(--primary-solid); color: white; border: none; border-radius: 1.25rem; font-family: inherit; font-size: 1.1rem; font-weight: 600; cursor: pointer; display: grid; grid-auto-flow: column; place-content: center; place-items: center; gap: .5rem; transition: all var(--transition); }
+        #download-btn:hover:not(:disabled) { background-color: hsl(var(--primary-dark)); } #download-btn:disabled { cursor: not-allowed; background-color: hsl(var(--primary), 0.5); }
+        .loader-container { width: 40px; aspect-ratio: 1; background: linear-gradient(to bottom right, #0000 calc(50% - 40px), #fff 50%, #0000 calc(50% + 40px)) bottom right/calc(200% + 80px) calc(200% + 80px) var(--primary-solid); animation: loader 1s infinite; }
+        @keyframes loader { 100% { background-position: top left } }
+        #result-container { width: 100%; margin-top: 1.5rem; background-color: white; border-radius: 1.5rem; border: .1rem solid hsl(0, 0%, 90%); padding: 1.5rem; text-align: center; }
+        #result-container img { max-width: 200px; border-radius: 10px; margin-bottom: 1rem; border: 1px solid #eee; }
+        #result-container .video-title { font-weight: 600; font-size: 1.1em; color: #333; margin-bottom: 1.5rem; }
+        .download-links a { display: inline-block; margin: 5px; padding: 12px 25px; background-color: var(--primary-solid); color: white; text-decoration: none; border-radius: 10px; font-weight: bold; transition: background-color 0.3s, transform 0.2s; }
+        .download-links a:hover { background-color: hsl(var(--primary-dark)); transform: translateY(-2px); }
+        #error-message { color: hsl(var(--warning)); font-weight: bold; font-size: 1.1rem; }
+        footer { margin-top: auto; padding-top: 2rem; text-align: center; color: #777; font-size: 0.9em; }
+    </style>
+</head>
+<body>
+    <main>
+        <h1 class="animate">داگرکەرێ تیکتۆکی بێ لۆگۆ</h1>
+        <p class="animate">هەر ڤیدیۆیەکا تە بڤێت ل ڤێرە دابگرە، ڤیدیۆ دێ لسەر سێرڤەرێ مە هێتە خەزنکرن.</p>
+        <div class="input-container animate">
+            <input type="text" id="tiktok-url" placeholder="لینکێ ڤیدیۆیێ ل ڤێرە دابنە...">
+            <button id="download-btn">داگرتن</button>
+        </div>
+        <div id="loader" class="loader-container off"></div>
+        <div id="result-container" class="animate off"></div>
+    </main>
+    <footer class="animate"><p>&copy; 2025 - هەمی ماف پاراستینە.</p></footer>
+
+    <script>
+        const urlInput = document.getElementById('tiktok-url');
+        const downloadBtn = document.getElementById('download-btn');
+        const loader = document.getElementById('loader');
+        const resultContainer = document.getElementById('result-container');
+
+        window.addEventListener('load', () => {
+            document.querySelectorAll('.animate').forEach(el => el.classList.add('in'));
+        });
+
+        downloadBtn.addEventListener('click', async () => {
+            const tiktokUrl = urlInput.value.trim();
+            if (tiktokUrl === '') {
+                showError('تکایە لینکەکی دابنە!');
+                return;
+            }
+
+            loader.classList.remove('off');
+            resultContainer.classList.add('off');
+            downloadBtn.disabled = true;
+
+            try {
+                // **گوهۆڕینا سەرەکی ل ڤێرەیە**
+                // نوکە داخازی بۆ فایلێ PHP یێ خۆمان دهێتە هنارتن
+                const response = await fetch('downloader.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: `url=${encodeURIComponent(tiktokUrl)}`
+                });
+                
+                const result = await response.json();
+
+                if (result.success) {
+                    displayResult(result);
+                } else {
+                    showError(result.message);
+                }
+            } catch (error) {
+                console.error(error);
+                showError('کێشەیەکا نەپێشبینیکری روویدا. تکایە دوبارە هەول بدە.');
+            } finally {
+                loader.classList.add('off');
+                downloadBtn.disabled = false;
+            }
+        });
+
+        function displayResult(data) {
+            resultContainer.classList.remove('off');
+            
+            const htmlContent = `
+                <img src="${data.cover}" alt="Wêneya Pêşandanê">
+                <p class="video-title">${data.title}</p>
+                <div class="download-links">
+                    <a href="${data.downloadUrl}" target="_blank" download>داگرتنا ڤیدیۆیێ (HD)</a>
+                </div>`;
+            resultContainer.innerHTML = htmlContent;
+        }
+        
+        function showError(message) {
+            resultContainer.classList.remove('off');
+            resultContainer.innerHTML = `<p id="error-message">${message}</p>`;
+        }
+    </script>
+</body>
+</html>
