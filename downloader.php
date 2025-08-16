@@ -1,34 +1,40 @@
 <?php
-// ---- downloader.php (Guhertoya Başتر) ----
+// ---- downloader.php (Guhertoya bo Diyarkirina Kêşeyan - Debugging) ----
 
-// دیارکرنا جۆرێ داتایێ کو دێ هێتە زڤراندن (JSON)
 header('Content-Type: application/json');
 
-// 1. وەرگرتنا لینکێ ژ داخازییا JavaScript
-$tiktokUrl = $_POST['url'] ?? '';
+// ******** BEŞÊ DIYARKIRINA KÊŞEYAN ********
+// Em dê هەمی خەلەتیان نیشان دەین دا بزانین کێشە چیە
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+// *******************************************
 
+// 1. پشتراستبوون ژ هەبوونا cURL
+if (!function_exists('curl_init')) {
+    echo json_encode(['success' => false, 'message' => 'Kêşe: Pirtûkxaneya cURL li ser serverê te nehatiye sazkirin.']);
+    exit;
+}
+
+// 2. وەرگرتنا لینکێ
+$tiktokUrl = $_POST['url'] ?? '';
 if (empty($tiktokUrl)) {
-    // ئەگەر لینک بەتال بوو، پەیامەکا خەلەتیێ بزڤرینە
     echo json_encode(['success' => false, 'message' => 'تکایە لینکەکی دابنە.']);
     exit;
 }
 
-// 2. پێزانینێن APIـیا خۆ ل ڤێرە دابنە
-$apiKey = '667f3c6a42mshf470829593814f0p1edcb0jsnc9f30089ef3e'; // ⚠️ پشتراست بە کو ئەڤ کلیلە یا دروستە و چالاکە
+// 3. پێزانینێن API
+$apiKey = '667f3c6a42mshf470829593814f0p1edcb0jsnc9f30089ef3e'; // ⚠️ تکایە دوبارە پشتراست بە کو ئەڤ کلیلە یا دروستە
 $apiHost = 'tiktok-video-no-watermark2.p.rapidapi.com';
 
-// 3. دروستکرنا داخازیێ ب cURL بۆ RapidAPI
+// 4. دروستکرنا داخازییا cURL
 $curl = curl_init();
 curl_setopt_array($curl, [
     CURLOPT_URL => "https://{$apiHost}/",
     CURLOPT_RETURNTRANSFER => true,
-    CURLOPT_ENCODING => "",
-    CURLOPT_MAXREDIRS => 10,
     CURLOPT_TIMEOUT => 30,
-    CURLOPT_FOLLOWLOCATION => true,
-    CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
     CURLOPT_CUSTOMREQUEST => "POST",
-    CURLOPT_POSTFIELDS => http_build_query(['url' => $tiktokUrl, 'hd' => 1]), // 'hd=1' بۆ کوالێتیا باشتر
+    CURLOPT_POSTFIELDS => http_build_query(['url' => $tiktokUrl, 'hd' => 1]),
     CURLOPT_HTTPHEADER => [
         "Content-Type: application/x-www-form-urlencoded",
         "X-RapidAPI-Host: {$apiHost}",
@@ -38,33 +44,52 @@ curl_setopt_array($curl, [
 
 $response = curl_exec($curl);
 $err = curl_error($curl);
+$http_code = curl_getinfo($curl, CURLINFO_HTTP_CODE); // وەرگرتنا HTTP Code
 curl_close($curl);
 
-// ئەگەر کێشەیەک د پەیوەندیێ دا هەبوو
+// 5. ئەڤە گرنگترین بەشە بۆ دیارکرنا کێشەیێ
 if ($err) {
-    echo json_encode(['success' => false, 'message' => 'کێشەیەک د پەیوەندییا دەرەکی دا روویدا: ' . $err]);
+    // ئەگەر cURL نەشیا پەیوەندیێ بکەت
+    echo json_encode(['success' => false, 'message' => 'Kêşeya cURL: ' . $err]);
     exit;
 }
 
-// وەرگێرانا بەرسڤێ ژ JSON بۆ PHP
+// Em bersiva xav (raw response) çap دکەین دا ببینن ka API çi vedigerîne
+// Heke bersiv ne JSON be, em ê li vir bibînin
+if ($http_code != 200) {
+    echo json_encode([
+        'success' => false,
+        'message' => "API bi xeta bersiv da (HTTP Code: {$http_code}).",
+        'api_response' => $response // Bersiva xav ji API
+    ]);
+    exit;
+}
+
 $data = json_decode($response, true);
 
-// 4. پرۆسەکرنا بەرسڤا ژ API وەرگرتی
-// ئەم پشتراست دبین کا بەرسڤ سەرکەفتی بوویە و لینکێ ڤیدیۆیێ تێدایە
-if ($data && isset($data['code']) && $data['code'] === 0 && isset($data['data']['play'])) {
+// ئەگەر وەرگێرانا JSON سەرنەکەفت
+if (json_last_error() !== JSON_ERROR_NONE) {
+    echo json_encode([
+        'success' => false,
+        'message' => 'Neşiya bersiva API were fehm kirin (JSON ne durist e).',
+        'api_response_raw' => $response
+    ]);
+    exit;
+}
 
-    // **گوهۆڕینا سەرەکی:**
-    // ئەم لینکێ ژ API دهێت، راستەوخۆ د زڤرینین بۆ بکارهێنەری
-    // بێی کو لسەر سێرڤەرێ خۆ خەزن بکەین
+// 6. ئەنجامێ dawî
+if ($data && isset($data['code']) && $data['code'] === 0 && isset($data['data']['play'])) {
     echo json_encode([
         'success' => true,
-        'downloadUrl' => $data['data']['play'], // لینکێ راستەوخۆ ژ API
+        'downloadUrl' => $data['data']['play'],
         'title' => $data['data']['title'] ?? 'Sernav nehate dîtin',
         'cover' => $data['data']['cover'] ?? ''
     ]);
-
 } else {
-    // ئەگەر API خەلەتیەک زڤراند، پەیاما وێ نیشان بدە
-    echo json_encode(['success' => false, 'message' => $data['message'] ?? 'ڤیدیۆ نەهاتە دیتن یان لینک خەلەتە. تکایە دوبارە هەول بدە.']);
+    echo json_encode([
+        'success' => false,
+        'message' => $data['message'] ?? 'Bersivek neçaverêkirî ji API hat.',
+        'api_data' => $data // Em hemî datayên ji API hatine nîşan didin
+    ]);
 }
 ?>
